@@ -88,10 +88,7 @@ Edit `config.yaml` to modify matching parameters such as:
 
 ```yaml
 max_feature_detection: 10000
-octave_layers: 8
-contrast_threshold: 5e-5
-edge_threshold: 100
-sigma: 1.1
+cross_check_distance: 5.0
 ...
 ```
 
