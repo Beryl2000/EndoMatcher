@@ -1,6 +1,5 @@
 import yaml
 import argparse
-
 from match_pipeline import run_feature_matching_pipeline  
 
 def load_config(config_path):
