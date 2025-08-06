@@ -102,12 +102,7 @@ sigma: 1.1
 If you find this work useful, please cite our paper:
 
 ```bibtex
-@article{your2025endomatcher,
-  title={EndoMatcher: Generalizable Endoscopic Image Matching via Large-Scale Multi-Domain Pretraining},
-  author={Your Name and Others},
-  journal={arXiv preprint},
-  year={2025}
-}
+
 ```
 
 ---
