@@ -1,0 +1,25 @@
+# config.yaml
+
+# Paths
+trained_model_path: checkpoint/checkpoint_model.pt
+sequence_root: Demo_seqs/
+out_path: output/
+
+# Input
+input_size: [384, 384]
+batch_size: 1
+
+# Feature Matching Parameters
+pre_trained: false
+rrange: 20
+cross_check_distance: 5.0
+
+# SIFT Parameters
+max_feature_detection: 10000
+octave_layers: 8
+contrast_threshold: 5e-5
+edge_threshold: 100
+sigma: 1.1
+
+# Device
+device_ids: [0]
