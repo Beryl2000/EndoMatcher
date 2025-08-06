@@ -2,7 +2,7 @@
 # EndoMatcher
 
 This repository provides the code for the paper:  
-**"EndoMatcher: Generalizable Endoscopic Image Matching via Large-Scale Multi-Domain Pretraining"**.
+**"EndoMatcher: Generalizable Endoscopic Image Matcher via Multi-Domain Pre-training for Robot-Assisted Surgery"**.
 
 > EndoMatcher is a generalizable dense feature matcher tailored for endoscopic images, enabling robust performance under difficult visual conditions such as weak textures, illumination variation, and large camera motion.  
 > It is trained on **Endo-Mix6**, the first large-scale multi-domain endoscopic matching dataset (1.2M image pairs).  
