@@ -1,8 +1,5 @@
-import os
 import yaml
 import argparse
-import torch
-from pathlib import Path
 
 from match_pipeline import run_feature_matching_pipeline  
 
