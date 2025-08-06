@@ -77,14 +77,6 @@ python demo.py --config config.yaml
 ```
 
 - This will run dense matching on image sequences in `Demo_seqs/images`.
-- You can override paths by adding arguments like:
-
-```bash
-python demo.py --config config.yaml \
-               --trained_model_path checkpoint/your_model.pth \
-               --sequence_root Demo_seqs/images \
-               --out_path results/
-```
 
 ---
 
