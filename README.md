@@ -8,7 +8,7 @@ This repository provides the code for the paper:
 > It is trained on **Endo-Mix6**, the first large-scale multi-domain endoscopic matching dataset (1.2M image pairs).  
 > Our method achieves state-of-the-art results in **zero-shot** matching across multiple datasets.
 
-![Qualitative Results](./results.png)
+![Qualitative Results](./result.png)
 
 ---
 
