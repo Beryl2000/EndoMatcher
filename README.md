@@ -16,7 +16,7 @@ This repository provides the code for the paper:
 
 ### Hamlyn & Bladder Tissue Datasets
 
-| Method | Training Sets | N<sub>pt</sub> | N<sub>inlier</sub> | KR (%) | N<sub>pt</sub> | N<sub>inlier</sub> | KR (%) | FPS ↑ |
+| Method | Training Sets | N<sub>pt</sub> | N<sub>inlier</sub> | KR | N<sub>pt</sub> | N<sub>inlier</sub> | KR | FPS ↑ |
 |--------|----------------|------------------------|--------------------|--------|---------------------------|--------------------|--------|-------|
 | SIFT + FLANN | - | 5.97 | 4.15 | 28.67 | 18.34 | 13.52 | 50.23 | - |
 | SuperPoint + SuperGlue | COCO + ScanNet | 47.80 | 30.85 | 60.74 | 36.75 | 26.31 | 61.77 | 6.11 |
