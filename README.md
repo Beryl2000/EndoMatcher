@@ -99,7 +99,15 @@ cross_check_distance: 5.0
 If you find this work useful, please cite our paper:
 
 ```bibtex
-
+@misc{yang2025endomatchergeneralizableendoscopicimage,
+      title={EndoMatcher: Generalizable Endoscopic Image Matcher via Multi-Domain Pre-training for Robot-Assisted Surgery}, 
+      author={Bingyu Yang and Qingyao Tian and Yimeng Geng and Huai Liao and Xinyan Huang and Jiebo Luo and Hongbin Liu},
+      year={2025},
+      eprint={2508.05205},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2508.05205}, 
+}
 ```
 
 ---
