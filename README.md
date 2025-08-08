@@ -61,7 +61,7 @@ To run matching on endoscopic image sequences:
 ### 1. Install Environment
 
 ```bash
-git clone https://github.com/YourRepo/EndoMatcher.git
+git clone https://github.com/Beryl2000/EndoMatcher.git
 cd EndoMatcher
 pip install -r requirements.txt
 ```
