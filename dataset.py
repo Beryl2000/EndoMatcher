@@ -9,6 +9,7 @@ from pathlib import Path
 import os
 import random
 from torchvision.transforms import Compose
+import matplotlib.cm as cm
 
 from dpt.transforms import Resize, NormalizeImage, PrepareForNet
 import utils
@@ -86,7 +87,7 @@ def pre_processing_data(process_id, folder_list,out_size, inlier_percentage,
 class MixDataset(Dataset):
     def __init__(self, image_file_names, folder_list,out_size,
                  network_downsampling, load_intermediate_data,
-                 intermediate_data_root, phase, intermediate_data_root_onlyval=None,visible_interval=30, pre_workers=12, inlier_percentage=0.998,reprojection_error_threshold=5,
+                 intermediate_data_root, phase, train_phase,visible_interval=30, pre_workers=12, inlier_percentage=0.998,reprojection_error_threshold=5,
                  adjacent_range=(1, 1), num_iter=None,
                  sampling_size=10, heatmap_sigma=5.0,split_list=[]):
 
@@ -96,24 +97,23 @@ class MixDataset(Dataset):
 
         self.split_list = split_list
         if self.split_list!=[]:
-            self.c3vd_tr_ls=self.split_list['C3VD']['train']
-            self.endoslam_tr_ls=self.split_list['EndoSLAM']['train']
-            self.scared_tr_ls=self.split_list['SCARED']['train']
-            self.endomapper_tr_ls=self.split_list['EndoMapper']['train']
-            self.efm_tr_ls=self.split_list['EFM_COLON']['train']
-            self.ours_tr_ls=self.split_list['Ours']['train']
+            self.c3vd_trval_ls=self.split_list['C3VD']['train']+self.split_list['C3VD']['val']
+            self.endoslam_trval_ls=self.split_list['EndoSLAM']['train']+self.split_list['EndoSLAM']['val']
+            self.scared_trval_ls=self.split_list['SCARED']['train']+self.split_list['SCARED']['val']
+            self.endomapper_trval_ls=self.split_list['EndoMapper']['train']+self.split_list['EndoMapper']['val']
+            self.efm_trval_ls=self.split_list['EFM_COLON']['train']+self.split_list['EFM_COLON']['val']
+            self.ours_trval_ls=self.split_list['Ours']['train']+self.split_list['Ours']['val']
 
-            self.c3vd_tr_ls = [Path(path).name for path in self.c3vd_tr_ls]
-            self.endoslam_tr_ls = [Path(path).name for path in self.endoslam_tr_ls]
-            self.scared_tr_ls = [Path(path).name for path in self.scared_tr_ls]
-            self.endomapper_tr_ls = [Path(path).name for path in self.endomapper_tr_ls]
-            self.efm_tr_ls = [Path(path).name for path in self.efm_tr_ls]
-            self.ours_tr_ls = [Path(path).name for path in self.ours_tr_ls]
+            self.c3vd_trval_ls = [Path(path).name for path in self.c3vd_trval_ls]
+            self.endoslam_trval_ls = [Path(path).name for path in self.endoslam_trval_ls]
+            self.scared_trval_ls = [Path(path).name for path in self.scared_trval_ls]
+            self.endomapper_trval_ls = [Path(path).name for path in self.endomapper_trval_ls]
+            self.efm_trval_ls = [Path(path).name for path in self.efm_trval_ls]
+            self.ours_trval_ls = [Path(path).name for path in self.ours_trval_ls]
 
-            self.datasets_list = [self.c3vd_tr_ls, self.endoslam_tr_ls, self.scared_tr_ls,self.endomapper_tr_ls,self.efm_tr_ls,self.ours_tr_ls]
+            self.datasets_list = [self.c3vd_trval_ls, self.endoslam_trval_ls, self.scared_trval_ls,self.endomapper_trval_ls,self.efm_trval_ls,self.ours_trval_ls]
 
         self.intermediate_data_root=intermediate_data_root
-        self.intermediate_data_root_onlyval=intermediate_data_root_onlyval
         assert (len(adjacent_range) == 2)
         self.adjacent_range = adjacent_range
         self.inlier_percentage = inlier_percentage 
@@ -121,6 +121,7 @@ class MixDataset(Dataset):
         self.out_size=out_size
         self.network_downsampling = network_downsampling 
         self.phase = phase
+        self.train_phase = train_phase
         self.visible_interval = visible_interval 
         self.sampling_size = sampling_size
         self.num_iter = num_iter
@@ -465,9 +466,9 @@ class MixDataset(Dataset):
         return training_color_img_1, training_color_img_2, homography,valid_mask_right,ps1,ps2warp
 
     def __getitem__(self, idx):
-        if self.phase == 'train' or self.phase == "validation"  or self.phase == "onlyval" :
+        if self.phase == 'train' or self.phase == "validation"   :
             p = np.random.random()
-            if (p >0.2 or self.phase == "validation") and self.phase != "onlyval" :
+            if (p >0.2 or self.phase == "validation")  :
                 while True:
 
                     img_file_name = self.image_file_names[idx % len(self.image_file_names)]
@@ -478,13 +479,17 @@ class MixDataset(Dataset):
                         if folder.name in dataset:
                             self.real_flag = i
                             break
-
-                    # if self.real_flag<3:
-                    #     idx = np.random.randint(0, len(self.image_file_names))
-                    #     continue
-                    if self.real_flag>=3:
-                        idx = np.random.randint(0, len(self.image_file_names))
-                        continue
+                    if self.phase == 'train':                
+                        if self.train_phase=='train_real' and self.real_flag<2: # train on real data only 
+                            idx = np.random.randint(0, len(self.image_file_names))
+                            continue
+                        if self.train_phase=='train_synthetic' and self.real_flag>=2: # train on synthetic data only
+                            idx = np.random.randint(0, len(self.image_file_names))
+                            continue
+                    else:
+                        if self.real_flag<2:  # validation on real data only
+                            idx = np.random.randint(0, len(self.image_file_names))
+                            continue
 
                     precompute_path=self.intermediate_data_root / ("precompute_{}.pkl".format('_'.join(list(Path(folder).parts[-2:])) ))
                     with open(str(precompute_path), "rb") as f:
@@ -503,27 +508,6 @@ class MixDataset(Dataset):
                                                                         visible_view_indexes=
                                                                         self.visible_view_indexes_per_seq,
                                                                         adjacent_range=self.adjacent_range)
-
-                    if self.intermediate_data_root_onlyval!=None:
-                        precompute_path_onlyval=self.intermediate_data_root_onlyval / ("precompute_{}.pkl".format('_'.join(list(Path(folder).parts[-2:])) ))
-                        if not precompute_path_onlyval.exists():
-                            idx = np.random.randint(0, len(self.image_file_names))
-                            continue
-                        with open(precompute_path_onlyval, "rb") as f:
-                            folder_feature_matches = pickle.load(f)
-                        if increment>0:
-                            try:
-                                feature_matches_onlyval=folder_feature_matches[pos][increment-1][0] 
-                            except (IndexError, KeyError, TypeError):
-                                idx = np.random.randint(0, len(self.image_file_names))
-                                continue
-                        else:
-                            try:
-                                feature_matches_onlyval=folder_feature_matches[pos+increment][-increment-1][0]
-                            except (IndexError, KeyError, TypeError):
-                                idx = np.random.randint(0, len(self.image_file_names))
-                                continue
-                            feature_matches_onlyval = feature_matches_onlyval[:, torch.tensor([2, 3, 0, 1])]
 
                     pair_indexes = [self.visible_view_indexes_per_seq[pos],
                                     self.visible_view_indexes_per_seq[pos + increment]]
@@ -604,116 +588,6 @@ class MixDataset(Dataset):
                 target_feature_1D_locations[:, 0] = np.round(clipped_target_feature_2D_locations[:, 0]) + \
                                                     np.round(clipped_target_feature_2D_locations[:, 1]) * width
 
-            elif self.phase == "onlyval" :
-                while True:
-                    img_file_name = self.image_file_names[idx % len(self.image_file_names)]
-                    folder = img_file_name.parents[1]
-
-                    images_folder = folder / "images"
-                    folder_str = str(folder)
-
-                    precompute_path=self.intermediate_data_root / ("precompute_{}.pkl".format('_'.join(list(Path(folder).parts[-2:])) ))
-                    with open(str(precompute_path), "rb") as f:
-                        [self.selected_indexes_per_seq,
-                        self.visible_view_indexes_per_seq,
-                        self.point_cloud_per_seq,
-                        self.intrinsic_matrix_per_seq,
-                        self.view_indexes_per_point_per_seq,
-                        self.extrinsics_per_seq,
-                        self.projection_per_seq,
-                        self.clean_point_list_per_seq,
-                        self.out_size, self.network_downsampling,
-                        self.inlier_percentage] = pickle.load(f).values()
-
-                    precompute_path_onlyval=self.intermediate_data_root_onlyval / ("precompute_{}.pkl".format('_'.join(list(Path(folder).parts[-2:])) ))
-                    if not precompute_path_onlyval.exists():
-                        idx = np.random.randint(0, len(self.image_file_names))
-                        continue
-                    with open(precompute_path_onlyval, "rb") as f:
-                        folder_feature_matches = pickle.load(f)
-
-                    pos, increment = utils.generating_pos_and_increment(idx=idx,
-                                                                        visible_view_indexes=
-                                                                        self.visible_view_indexes_per_seq,
-                                                                        adjacent_range=self.adjacent_range)
-
-                    pair_indexes = [self.visible_view_indexes_per_seq[pos],
-                                    self.visible_view_indexes_per_seq[pos + increment]]
-
-                    camera_intrinsic=self.intrinsic_matrix_per_seq[:,0:3]
-
-                    pair_extrinsics_matrices = [self.extrinsics_per_seq[pos],
-                                                self.extrinsics_per_seq[pos + increment]]
-                    pair_projection_matrices = [self.projection_per_seq[pos],
-                                                self.projection_per_seq[pos + increment]]
-                    pair_intrinsic_matrices = self.intrinsic_matrix_per_seq
-
-                    pair_imgs = utils.get_pair_color_imgs(images_folder,pair_indexes,self.out_size)
-                    training_color_img_1=self.transform({"image": pair_imgs[0]})["image"]
-                    training_color_img_2=self.transform({"image": pair_imgs[1]})["image"]
-                    height, width = training_color_img_1.shape[1:]
-
-                    if increment>0:
-                        try:
-                            feature_matches_onlyval=folder_feature_matches[pos][increment-1][0]
-                        except (IndexError, KeyError, TypeError): 
-                            idx = np.random.randint(0, len(self.image_file_names))
-                            continue
-                    else:
-                        try:
-                            feature_matches_onlyval=folder_feature_matches[pos+increment][-increment-1][0]
-                        except (IndexError, KeyError, TypeError): 
-                            idx = np.random.randint(0, len(self.image_file_names))
-                            continue
-                        feature_matches_onlyval = feature_matches_onlyval[:, torch.tensor([2, 3, 0, 1])]
-
-                    if feature_matches_onlyval.shape[0] > 10:
-                        sampled_feature_matches_indexes = \
-                            np.asarray(
-                                np.random.choice(np.arange(feature_matches_onlyval.shape[0]), size=self.sampling_size),
-                                dtype=np.int32).reshape((-1,))
-                        sampled_feature_matches = np.asarray(feature_matches_onlyval[sampled_feature_matches_indexes, :],
-                                                            dtype=np.float32).reshape(
-                            (self.sampling_size, 4))
-                        break
-                    else:
-                        idx = np.random.randint(0, len(self.image_file_names))
-                        continue
-
-
-                _,height, width = training_color_img_1.shape
-                training_heatmaps_1, training_heatmaps_2 = utils.generate_heatmap_from_locations(
-                    sampled_feature_matches, height, width, self.heatmap_sigma)
-
-
-                training_mask_boundary = utils.type_float_and_reshape(np.ones((height,width)),(1,height, width))
-                valid_mask_right=training_mask_boundary
-
-                source_feature_2D_locations = sampled_feature_matches[:, :2]
-                target_feature_2D_locations = sampled_feature_matches[:, 2:]
-
-                source_feature_1D_locations = np.zeros(
-                    (sampled_feature_matches.shape[0], 1), dtype=np.int32)
-                target_feature_1D_locations = np.zeros(
-                    (sampled_feature_matches.shape[0], 1), dtype=np.int32)
-
-                clipped_source_feature_2D_locations = source_feature_2D_locations
-                clipped_source_feature_2D_locations[:, 0] = np.clip(clipped_source_feature_2D_locations[:, 0], a_min=0,
-                                                                    a_max=width - 1)
-                clipped_source_feature_2D_locations[:, 1] = np.clip(clipped_source_feature_2D_locations[:, 1], a_min=0,
-                                                                    a_max=height - 1)
-
-                clipped_target_feature_2D_locations = target_feature_2D_locations
-                clipped_target_feature_2D_locations[:, 0] = np.clip(clipped_target_feature_2D_locations[:, 0], a_min=0,
-                                                                    a_max=width - 1)
-                clipped_target_feature_2D_locations[:, 1] = np.clip(clipped_target_feature_2D_locations[:, 1], a_min=0,
-                                                                    a_max=height - 1)
-
-                source_feature_1D_locations[:, 0] = np.round(clipped_source_feature_2D_locations[:, 0]) + \
-                                                    np.round(clipped_source_feature_2D_locations[:, 1]) * width
-                target_feature_1D_locations[:, 0] = np.round(clipped_target_feature_2D_locations[:, 0]) + \
-                                                    np.round(clipped_target_feature_2D_locations[:, 1]) * width
-
             else:
                 while True:
 
@@ -726,14 +600,12 @@ class MixDataset(Dataset):
                             self.real_flag = i  # Assign i for the corresponding dataset
                             break
 
-
-                    # if self.real_flag<3:
-                    #     idx = np.random.randint(0, len(self.image_file_names))
-                    #     continue
-                    if self.real_flag>=3:
+                    if self.train_phase=='train_real' and self.real_flag<2:
                         idx = np.random.randint(0, len(self.image_file_names))
                         continue
-
+                    if self.train_phase=='train_synthetic' and self.real_flag>=2:
+                        idx = np.random.randint(0, len(self.image_file_names))
+                        continue
 
                     precompute_path=self.intermediate_data_root / ("precompute_{}.pkl".format('_'.join(list(Path(folder).parts[-2:])) ))
                     with open(str(precompute_path), "rb") as f:
@@ -879,3 +751,5 @@ class MixDataset(Dataset):
             return [training_color_img_1,
                     training_mask_boundary,
                     str(img_file_name), folder_str,pair_intrinsic_matrices]
+
+

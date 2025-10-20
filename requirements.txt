@@ -30,3 +30,6 @@ tqdm==4.67.1
 typing_extensions==4.14.1
 wandb==0.21.0
 webdataset==1.0.2
+transformers==4.46.3
+kornia==0.6.7
+omegaconf==2.3.0
