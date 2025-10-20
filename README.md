@@ -26,7 +26,6 @@ This repository provides the code for the paper:
 | TransMatch | MegaDepth | _**4676.61**_ | _**2648.92**_ | 55.25 | _**4557.93**_ | _**2029.05**_ | 43.84 | 0.02 |
 | **Ours** | Endo-Mix6 | **8190.21** | **6375.70** | **73.40** | **8346.82** | **6116.20** | **68.75** | **47.38** |
 
----
 
 ### Gastro-Matching Dataset
 
@@ -50,29 +49,92 @@ We build **Endo-Mix6**, a large-scale **multi-domain** dataset for endoscopic im
 - Correspondence labels from SfM and simulation
 - Diverse motion, lighting, and organ types
 
-**Download links for Endo-Mix6 will be provided soon.**
+
+### 🔗 Download & Preparation
+
+We provide **five** publicly available domains of **Endo-Mix6**:  
+
+- `C3VD`  ：[ Baidu Netdisk (qet5)](https://pan.baidu.com/s/1upQ3eKSvILd1GHh8QOCtVg)
+- `EndoSLAM`  ：[ Baidu Netdisk (qxic)](https://pan.baidu.com/s/1BfS7HV7IM3bRDwg7E_WzHg)
+- `SCARED`  ：[ Baidu Netdisk (8ct8)](https://pan.baidu.com/s/1Q6dF6387yZQJPl-wJtH-yQ)
+- `EndoMapper`  ：[ Baidu Netdisk (attz)](https://pan.baidu.com/s/1fc7pdUgpJ1FNnaovmuZMZw)
+- `Colonoscopic`  ：[ Baidu Netdisk (o8jt)](https://pan.baidu.com/s/1nzHsBdK5p2F9P2twy_u8WQ)
+
+Unfortunately, the **sixth domain (`Ours-Bronch`)** is **private** and is not available for public release.
+
+
+After downloading, please place all datasets under a common directory, e.g.:
+
+```
+DATA/
+ ├── C3VD/
+ ├── EndoSLAM/
+ ├── SCARED/
+ ├── EndoMapper/
+ ├── Colonoscopic/
+```
+
+**Important:** Each dataset contains three subfolders named `1`, `2`, and `3`.
+
+Example target structure after arranging (you can merge the contents of same-numbered folders into these target folders):
+
+```
+EndoMix6/
+ ├── 1/            <-- contains merged contents of each dataset's "1" folder (training)
+ ├── 2/            <-- contains merged contents of each dataset's "2" folder (validation)
+EndoMix6_test/
+ ├── 1/            <-- contains merged contents of each dataset's "3" folder (testing)
+```
 
 ---
 
-## 🧪 Demo: Run Matching on Your Data
-
-To run matching on endoscopic image sequences:
+## 🚀 Training
 
 ### 1. Install Environment
 
 ```bash
-git clone https://github.com/YourRepo/EndoMatcher.git
+git clone https://github.com/Beryl2000/EndoMatcher.git
 cd EndoMatcher
 pip install -r requirements.txt
 ```
 
-### 2. Download Pretrained Model
+### 2. Train the Model
+
+You can train **EndoMatcher** using a YAML configuration file:
+
+```bash
+python train.py --config train_config.yaml
+```
+
+**Example `train_config.yaml`:**
+
+```yaml
+phase: train_synthetic          # train_synthetic or train_real
+training_data_root: "EndoMix6"
+log_root: "log"
+batch_size: 16
+num_workers: 4
+lr: 5e-6
+load_trained_model: False
+trained_model_path: null
+...
+```
+
+- Logs and checkpoints will be saved automatically under `log/`.
+
+---
+
+## 🧪 Demo
+
+To run matching on endoscopic image sequences:
+
+### 1. Download Pretrained Model
 
 [📥 Pretrained EndoMatcher Model (OneDrive)](https://1drv.ms/u/c/3e70577908ec5d62/EbItrz8y1mdKjvnCI9UfeH4BO_z2DC59y1UlcCwEfjmq1Q?e=rtrrkh)
 
 Place the model file inside a folder named `checkpoint`.
 
-### 3. Run the Demo
+### 2. Run the Demo
 
 ```bash
 python demo.py --config config.yaml
@@ -80,11 +142,8 @@ python demo.py --config config.yaml
 
 - This will run dense matching on image sequences in `demo_seqs/images`.
 
----
 
-## ⚙️ Configuration
-
-Edit `config.yaml` to modify matching parameters such as:
+**Example `config.yaml`:**
 
 ```yaml
 max_feature_detection: 10000
@@ -99,7 +158,15 @@ cross_check_distance: 5.0
 If you find this work useful, please cite our paper:
 
 ```bibtex
-
+@misc{yang2025endomatchergeneralizableendoscopicimage,
+      title={EndoMatcher: Generalizable Endoscopic Image Matcher via Multi-Domain Pre-training for Robot-Assisted Surgery}, 
+      author={Bingyu Yang and Qingyao Tian and Yimeng Geng and Huai Liao and Xinyan Huang and Jiebo Luo and Hongbin Liu},
+      year={2025},
+      eprint={2508.05205},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2508.05205}, 
+}
 ```
 
 ---
@@ -116,8 +183,7 @@ We thank the authors for their excellent work.
 
 ## 🔮 Future Updates
 
-- [ ] Endo-Mix6 dataset release
-- [ ] Training code and scripts
-- [ ] Extended evaluation benchmarks
+- [x] ~~Endo-Mix6 dataset release~~
+- [x] ~~Training code and scripts~~
 
 For any questions, feel free to open an issue or contact us.
