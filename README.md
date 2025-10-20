@@ -105,6 +105,7 @@ You can train **EndoMatcher** using a YAML configuration file:
 ```bash
 python train.py --config train_config.yaml
 ```
+- Logs and checkpoints will be saved automatically under `log/`.
 
 **Example `train_config.yaml`:**
 
@@ -119,8 +120,6 @@ load_trained_model: False
 trained_model_path: null
 ...
 ```
-
-- Logs and checkpoints will be saved automatically under `log/`.
 
 ---
 
