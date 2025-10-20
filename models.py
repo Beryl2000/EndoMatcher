@@ -49,7 +49,6 @@ def setup_model_and_optimizer(cfg, device_ids, train_loader):
         weight_decay=0.01
     )
 
-    # 选择不同训练阶段的学习率调度策略
     if cfg.phase == "train_synthetic":
         lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=[], gamma=0.1

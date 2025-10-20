@@ -6,9 +6,9 @@ adjacent_range: [1, 20]
 network_downsampling: 64
 netinput_size: [384, 384]
 id_range: [1, 2, 3]
-batch_size: 2          # 应该是 16
-num_workers: 1         # 应该是 4
-num_pre_workers: 1     # 应该是 4
+batch_size: 16        
+num_workers: 4       
+num_pre_workers: 4
 inlier_percentage: 0.99
 reprojection_error_threshold: 5
 sampling_size: 10
@@ -28,7 +28,7 @@ num_iter: null
 display_architecture: true
 load_intermediate_data: true
 phase: "train_synthetic"   # train_real / train_synthetic
-num_epoch: 10              # 下面会覆盖：train_real 时自动变 30
+num_epoch: 10            
 feature_length: 256
 filter_growth_rate: 10
 matching_scale: 20.0
@@ -39,7 +39,7 @@ corse_confidence_ratio: 0.5
 
 # ===============  model  ===============
 load_trained_model: false
-trained_model_path: null   # 手动填写或命令行传入
+trained_model_path: null   # or "log/xxx/model/model_epoch_xxx.pth"
 
 # ===============  path  ===============
 log_root: "log"
