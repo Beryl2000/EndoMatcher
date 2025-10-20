@@ -2,7 +2,7 @@
 
 # Paths
 trained_model_path: /home/bingyu/YBY/PROJECT/MATCH/250714/den_cross_fwq/checkpoint_model_epoch_10_0.6996509413769908_0.8615192919969559_0.9274933633018048.pt
-sequence_root: Demo_seqs/
+sequence_root: demo_seqs/
 out_path: output/
 
 # Input

@@ -78,7 +78,7 @@ Place the model file inside a folder named `checkpoint`.
 python demo.py --config config.yaml
 ```
 
-- This will run dense matching on image sequences in `Demo_seqs/images`.
+- This will run dense matching on image sequences in `demo_seqs/images`.
 
 ---
 
