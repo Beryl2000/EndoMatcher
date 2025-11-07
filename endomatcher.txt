@@ -1,0 +1,306 @@
+"""EndoMatcher (Endoscopic Image Matcher) implementation."""
+
+import numpy as np
+import torch
+import cv2
+from typing import Tuple, Optional
+from pathlib import Path
+
+from .base import BaseMatcher
+
+
+class EndoMatcher(BaseMatcher):
+    """EndoMatcher: Generalizable Endoscopic Image Matcher.
+
+    EndoMatcher is specifically designed for endoscopic image matching in robot-assisted
+    surgery. 
+
+    Paper: EndoMatcher: Generalizable Endoscopic Image Matcher via Multi-Domain
+           Pre-training for Robot-Assisted Surgery (arXiv 2025)
+    Reference: https://github.com/Beryl2000/EndoMatcher
+    """
+
+    def __init__(
+        self,
+        checkpoint_path: Optional[str] = None,
+        use_cuda: bool = True,
+        **kwargs
+    ):
+        """Initialize EndoMatcher.
+
+        Args:
+            checkpoint_path: Path to pretrained checkpoint
+            use_cuda: Use CUDA if available
+        """
+        super().__init__(
+            checkpoint_path=checkpoint_path,
+            use_cuda=use_cuda,
+            **kwargs
+        )
+
+        # Check if CUDA is available
+        self.device = 'cuda' if (use_cuda and torch.cuda.is_available()) else 'cpu'
+
+        # Lazy loading - will be initialized on first match
+        self.model = None
+
+    def _initialize_models(self):
+        """Lazy initialization of EndoMatcher model."""
+        if self.model is not None:
+            return
+
+        try:
+            # Add EndoMatcher repo to path
+            import sys
+            endomatcher_path = Path(__file__).parent.parent.parent / 'external' / 'EndoMatcher'
+
+            if not endomatcher_path.exists():
+                raise FileNotFoundError(
+                    f"EndoMatcher not found at {endomatcher_path}\n"
+                    " clone it: git clone https://github.com/Beryl2000/EndoMatcher.git external/EndoMatcher"
+                )
+
+            sys.path.insert(0, str(endomatcher_path))
+
+            # Import EndoMatcher modules
+            from dpt.models import EndoMacher  # Note: typo in their code - "Macher" not "Matcher"
+
+            checkpoint_path = self.config.get('checkpoint_path', None)
+
+            # Use default checkpoint if none provided
+            if checkpoint_path is None:
+                checkpoint_path = endomatcher_path / 'checkpoint_model.pt'
+
+            if not Path(checkpoint_path).exists():
+                raise FileNotFoundError(
+                    f"Checkpoint not found: {checkpoint_path}\n"
+                    "Download weights from: https://github.com/Beryl2000/EndoMatcher"
+                )
+
+            # Initialize EndoMatcher model (from their code)
+            self.model = EndoMacher(
+                backbone="vitb_rn50_384",
+                non_negative=True,
+                pretrainedif=False,  # We're loading pretrained weights
+                enable_attention_hooks=False
+            )
+
+            # Load checkpoint (following their match_pipeline.py)
+            print(f"Loading EndoMatcher from {checkpoint_path}...")
+            pre_trained_state = torch.load(str(checkpoint_path), map_location=self.device, weights_only=False)
+            model_state = self.model.state_dict()
+            trained_model_state = {k: v for k, v in pre_trained_state["model"].items() if k in model_state}
+            model_state.update(trained_model_state)
+            self.model.load_state_dict(model_state)
+
+            self.model = self.model.eval().to(self.device)
+            print(f"EndoMatcher loaded successfully!")
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to initialize EndoMatcher model: {e}") from e
+
+    def _prepare_image(self, img: np.ndarray, input_size: tuple = (384, 384)) -> torch.Tensor:
+        """Convert numpy image to tensor format expected by EndoMatcher.
+
+        Args:
+            img: Image as numpy array (H x W x 3) or (H x W)
+            input_size: Size to resize to (H, W)
+
+        Returns:
+            Tensor of shape (3, H, W) for RGB (no batch dimension)
+        """
+        # Convert to RGB if grayscale
+        if len(img.shape) == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        elif img.shape[2] == 3:
+            # Ensure RGB format
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # Resize to model input size
+        img_resized = cv2.resize(img, (input_size[1], input_size[0]))
+
+        # Normalize to [0,  1]
+        img_normalized = img_resized.astype(np.float32) / 255.0
+
+        # Convert to tensor (C, H, W)
+        img_tensor = torch.from_numpy(img_normalized).permute(2, 0, 1).float()
+
+        return img_tensor.to(self.device)
+
+    def match(
+        self,
+        img1: np.ndarray,
+        img2: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+        """Match two images using EndoMatcher.
+
+        Following EndoMatcher's approach: SIFT keypoints + EndoMatcher features + cross-check matching.
+
+        Args:
+            img1: First image (H x W x 3) or (H x W)
+            img2: Second image (H x W x 3) or (H x W)
+
+        Returns:
+            kpts1: Matched keypoints in first image (N x 2)
+            kpts2: Corresponding keypoints in second image (N x 2)
+            confidence: Match confidence scores (N,)
+        """
+        # Initialize model on first call
+        self._initialize_models()
+
+        # Get original image dimensions
+        H_orig, W_orig = img1.shape[:2]
+        input_size = (384, 384)
+
+        # Prepare images (resized to 384x384)
+        img1_tensor = self._prepare_image(img1, input_size)
+        img2_tensor = self._prepare_image(img2, input_size)
+
+        # Extract SIFT keypoints on original images
+        sift = cv2.SIFT_create(nfeatures=2048)
+        kpts1_cv, desc1 = sift.detectAndCompute(img1, None)
+        kpts2_cv, desc2 = sift.detectAndCompute(img2, None)
+
+        if len(kpts1_cv) == 0 or len(kpts2_cv) == 0:
+            return np.array([]).reshape(0, 2), np.array([]).reshape(0, 2), np.array([])
+
+        # Convert keypoints to arrays
+        kpts1_orig = np.array([kp.pt for kp in kpts1_cv], dtype=np.float32)  # (N, 2)
+
+        # Scale keypoints to resized image coordinates
+        scale_x = input_size[1] / W_orig
+        scale_y = input_size[0] / H_orig
+        kpts1_scaled = kpts1_orig * np.array([scale_x, scale_y])
+
+        with torch.no_grad():
+            # Stack images for batch processing
+            # EndoMatcher expects shape (B, 2, C, H, W)
+            img_batch = torch.stack([img1_tensor, img2_tensor], dim=0).unsqueeze(0)  # (1, 2, 3, H, W)
+
+            # Extract features using EndoMatcher
+            # Following their code: model returns 8 outputs
+            path_30, path_31, path_20, path_21, path_10, path_11, feat1, feat2 = self.model(img_batch)
+
+            # Features are (B, C, H, W) - squeeze batch dimension
+            feat1 = feat1.squeeze(0)
+            feat2 = feat2.squeeze(0)
+
+            # Features are now (C, H, W)
+            feat_dim, feat_h, feat_w = feat1.shape
+
+            # Convert keypoints to 1D indices in feature map
+            kpts_x = (kpts1_scaled[:, 0] * feat_w / input_size[1]).astype(np.int32)
+            kpts_y = (kpts1_scaled[:, 1] * feat_h / input_size[0]).astype(np.int32)
+
+            # Clamp to feature map bounds
+            kpts_x = np.clip(kpts_x, 0, feat_w - 1)
+            kpts_y = np.clip(kpts_y, 0, feat_h - 1)
+
+            kpts_1d = kpts_y * feat_w + kpts_x  # 1D indices
+
+            # Sample features at keypoint locations (following their utils.py)
+            kpts_1d_tensor = torch.from_numpy(kpts_1d).long().to(self.device)
+            kpts_1d_tensor = kpts_1d_tensor.view(1, 1, -1).expand(-1, feat_dim, -1)
+
+            # Gather features at keypoint locations
+            sampled_feats = torch.gather(
+                feat1.view(1, feat_dim, feat_h * feat_w),
+                2,
+                kpts_1d_tensor
+            )  # (1, C, N)
+
+            sampled_feats = sampled_feats.view(1, feat_dim, len(kpts1_cv), 1, 1)
+            sampled_feats = sampled_feats.permute(0, 2, 1, 3, 4).view(
+                1, len(kpts1_cv), feat_dim, 1, 1
+            )
+
+            # STEP 1: Forward matching (img1 -> img2)
+            # Perform cross-correlation to find matches
+            response_map = torch.nn.functional.conv2d(
+                feat2.view(1, feat_dim, feat_h, feat_w),
+                sampled_feats.view(len(kpts1_cv), feat_dim, 1, 1),
+                padding=0
+            )  # (1, N, feat_h, feat_w)
+
+            # Find best match for each keypoint
+            max_responses, max_indices = torch.max(
+                response_map.view(len(kpts1_cv), -1),
+                dim=1
+            )
+
+            # STEP 2: Backward matching (img2 -> img1) for cross-check
+            # Extract features at the matched locations in img2
+            feature_1d_locations_2 = max_indices.long().view(1, 1, -1).expand(-1, feat_dim, -1)
+            sampled_feats_2 = torch.gather(
+                feat2.view(1, feat_dim, feat_h * feat_w),
+                2,
+                feature_1d_locations_2
+            )  # (1, C, N)
+
+            sampled_feats_2 = sampled_feats_2.view(1, feat_dim, len(kpts1_cv), 1, 1)
+            sampled_feats_2 = sampled_feats_2.permute(0, 2, 1, 3, 4).view(
+                1, len(kpts1_cv), feat_dim, 1, 1
+            )
+
+            # Match back to img1
+            source_response_map = torch.nn.functional.conv2d(
+                feat1.view(1, feat_dim, feat_h, feat_w),
+                sampled_feats_2.view(len(kpts1_cv), feat_dim, 1, 1),
+                padding=0
+            )
+
+            max_responses_2, max_indices_2 = torch.max(
+                source_response_map.view(len(kpts1_cv), -1),
+                dim=1
+            )
+
+            # STEP 3: Cross-check - verify that backward match returns to original location
+            # Convert original keypoints to 2D coordinates in feature map
+            keypoint_1d = kpts_1d.astype(np.float32)
+            keypoint_2d = np.stack([
+                keypoint_1d % feat_w,
+                keypoint_1d // feat_w
+            ], axis=1)  # (N, 2)
+
+            # Convert backward matched indices to 2D coordinates
+            detected_source_1d = max_indices_2.cpu().numpy().astype(np.float32)
+            detected_source_2d = np.stack([
+                detected_source_1d % feat_w,
+                detected_source_1d // feat_w
+            ], axis=1)  # (N, 2)
+
+            # Compute cross-check distance
+            cross_check_distances = np.linalg.norm(
+                keypoint_2d - detected_source_2d, axis=1
+            )
+
+            # Filter by cross-check distance (default 5.0 pixels in feature map space)
+            cross_check_threshold = 5.0
+            valid_cross_check = cross_check_distances < cross_check_threshold
+
+            # Convert forward matched indices to 2D coordinates in feature map
+            match_y = (max_indices // feat_w).cpu().numpy()
+            match_x = (max_indices % feat_w).cpu().numpy()
+
+            # Scale back to original image coordinates
+            kpts2_matched = np.stack([
+                match_x * W_orig / feat_w,
+                match_y * H_orig / feat_h
+            ], axis=1).astype(np.float32)
+
+            # Use response as confidence
+            confidence = max_responses.cpu().numpy()
+
+        # Filter by cross-check and minimum confidence threshold
+        conf_threshold = 0.3  # Lower threshold since we have cross-check now
+        valid_mask = valid_cross_check & (confidence > conf_threshold)
+
+        kpts1_final = kpts1_orig[valid_mask]
+        kpts2_final = kpts2_matched[valid_mask]
+        confidence_final = confidence[valid_mask]
+
+        return kpts1_final, kpts2_final, confidence_final
+
+    def get_name(self) -> str:
+        """Return matcher name."""
+        return "EndoMatcher"
