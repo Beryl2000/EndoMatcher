@@ -18,13 +18,14 @@ fi
 
 cat > .gitignore <<EOF
 checkpoint/
+demo_seqs/
 __pycache__/
 *.pyc
 *.pkl
 EOF
 
-echo "📦 添加除 checkpoint/ 外的所有修改..."
-git add . ':!checkpoint'
+echo "📦 添加除 checkpoint/ demo_seqs/ 外的所有修改..."
+git add . ':!checkpoint' ':!demo_seqs'
 
 if git diff --cached --quiet; then
   echo "✅ 没有检测到需要提交的变更。"

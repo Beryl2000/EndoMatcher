@@ -87,9 +87,9 @@ def pre_processing_data(process_id, folder_list,out_size, inlier_percentage,
 class MixDataset(Dataset):
     def __init__(self, image_file_names, folder_list,out_size,
                  network_downsampling, load_intermediate_data,
-                 intermediate_data_root, phase, train_phase,visible_interval=30, pre_workers=12, inlier_percentage=0.998,reprojection_error_threshold=5,
+                 intermediate_data_root, phase, visible_interval=30, pre_workers=12, inlier_percentage=0.998,reprojection_error_threshold=5,
                  adjacent_range=(1, 1), num_iter=None,
-                 sampling_size=10, heatmap_sigma=5.0,split_list=[]):
+                 sampling_size=10, heatmap_sigma=5.0,split_list=[],train_phase=None):
 
         normalization = NormalizeImage(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
         self.image_file_names = sorted(image_file_names)

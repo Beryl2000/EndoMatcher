@@ -1,4 +1,5 @@
 checkpoint/
+demo_seqs/
 __pycache__/
 *.pyc
 *.pkl
