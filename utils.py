@@ -349,11 +349,11 @@ def feature_matching_single_generation(feature_map_1, feature_map_2,
                                                 feature_length,
                                                 1, 1), padding=0)
 
-        max_reponses, max_indexes = torch.max(filter_response_map.view(keypoint_number, -1), dim=1,
+        max_responses, max_indexes = torch.max(filter_response_map.view(keypoint_number, -1), dim=1,
                                               keepdim=False)
         del sampled_feature_vectors, filter_response_map, source_feature_1d_locations
         detected_target_1d_locations = max_indexes.view(-1)
-        selected_max_responses = max_reponses.view(-1)
+        selected_max_responses = max_responses.view(-1)
         feature_1d_locations_2 = detected_target_1d_locations.long().view(
             1, 1, -1).expand(-1, feature_length, -1)
 
@@ -375,7 +375,7 @@ def feature_matching_single_generation(feature_map_1, feature_map_2,
                                                   feature_length,
                                                   1, 1), padding=0)
 
-        max_reponses_2, max_indexes_2 = torch.max(source_filter_response_map.view(keypoint_number, -1),
+        max_responses_2, max_indexes_2 = torch.max(source_filter_response_map.view(keypoint_number, -1),
                                                   dim=1,
                                                   keepdim=False)
         del sampled_feature_vectors_2, source_filter_response_map, feature_1d_locations_2
