@@ -131,8 +131,7 @@ To run matching on endoscopic image sequences:
 
 [📥 Pretrained EndoMatcher Model - OneDrive](https://1drv.ms/u/c/3e70577908ec5d62/EbItrz8y1mdKjvnCI9UfeH4BO_z2DC59y1UlcCwEfjmq1Q?e=rtrrkh)
 or
-[📥 Pretrained EndoMatcher Model - Baidu Netdisk (uz7d)]
-(https://pan.baidu.com/s/1hL7OFeqQGyGESgbghtb_hw)
+[📥 Pretrained EndoMatcher Model - Baidu Netdisk (uz7d)](https://pan.baidu.com/s/1hL7OFeqQGyGESgbghtb_hw)
 
 Place the model file inside a folder named `checkpoint`.
 
